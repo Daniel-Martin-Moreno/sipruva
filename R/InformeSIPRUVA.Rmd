@@ -1,0 +1,246 @@
+```{r licencia, echo=FALSE}
+#Copyright 2021 Daniel Martín-Moreno Romero
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
+```
+
+---
+title: "SIPRUVA: Informe sobre el conjunto de datos"
+date: "`r Sys.Date()`"
+output:
+  html_document: 
+    toc : yes
+  pdf_document: 
+   toc : yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(ggplot2)
+library(corrplot)
+library(rpart)
+library(rpart.plot)
+library(caret)
+library(dplyr)
+library(e1071)
+```
+
+# Analisis de dataset transformado de Excel a CSV
+
+```{r dataset a leer}
+file <-"ruta"
+periodo <- "anyo1"
+```
+
+Análisis del dataset `r file`
+
+```{r carga de resultados}
+entradas.df<-read.csv(file, encoding="latin1",header = TRUE,sep = ",",na.strings = "")
+entradas.df$tipoUva={
+  if (grepl("anyo1",file))
+    substring(entradas.df$tipoUva,6)
+  else
+    substring(entradas.df$tipoUva,10)
+}
+head(entradas.df,2)
+```
+
+Con unos datos de valores vacíos por atributo siguientes:
+```{r valores_nulos_totales}
+nas_por_atributo=sapply(entradas.df, function(x) sum(is.na(x)))
+round(nas_por_atributo,2)
+
+```
+
+Esto nos carga un dataset original de `r nrow(entradas.df)` filas con un total neto de `r sum(entradas.df$neto)` kg de `r nrow(entradas.df[entradas.df$tipoUva=="UVA BLANCA AIREN",])` filas de uva blanca airén (neto `r sum(entradas.df[entradas.df$tipoUva=="UVA BLANCA AIREN",]$neto)`), sobre las que aplicaremos operaciones de limpieza de datos
+
+## Visualizaciones iniciales
+
+Por tipo de uva
+
+```{r visualizacion inicial}
+tiposUva.table=table(entradas.df$tipoUva)
+tiposUva.df=as.data.frame(tiposUva.table)
+tiposUva.df=tiposUva.df[order(-tiposUva.df$Freq),]
+
+#x = reorder(miRNA, -value)
+plot = ggplot(data=tiposUva.df, aes(x=reorder(Var1, Freq), y=Freq))+
+  geom_bar(stat="identity", fill="steelblue")+
+  geom_text(aes(label=Freq),size=3.5)+
+  labs(x = "Variedad") + labs(y = "Num. entradas")+
+  ggtitle(paste("Entradas por tipo de uva ",periodo))+
+  theme(plot.title = element_text(hjust = 0.5))
+
+plot + coord_flip()
+```
+
+# Análisis específico para uva blanca airén
+
+A partir de este punto trabajamos únicamente con entradas de uva blanca airén. Primeramente consultamos el número de valores vacíos por atributo.
+```{r valores_nulos}
+entradas.df=entradas.df[entradas.df$tipoUva=="UVA BLANCA AIREN",]
+nas_por_atributo=sapply(entradas.df, function(x) sum(is.na(x)))
+round(nas_por_atributo,2)
+
+```
+
+Valores vacíos en terminos porcentuales
+```{r valores_nulos_porcentajes}
+round((nas_por_atributo/nrow(entradas.df)*100),2)
+```
+
+## Limpieza de datos
+Hacemos una limpieza de datos:
+
+* A las filas con glucónico vacío se les asigna el valor 0
+* Las filas con acidez o potasio vacías se filtran para evitar que introduzcan perturbaciones en Cuadro de Mando posterior de simulación de precios
+
+```{r hacemos la limpieza de los datos, echo=FALSE}
+
+entradas.df=entradas.df[!(is.na(entradas.df$potasio)),]
+entradas.df=entradas.df[!(is.na(entradas.df$acidez)),]
+
+entradas.df$gluconico[is.na(entradas.df$gluconico)]=0
+
+entradas.df=entradas.df[entradas.df$gluconico<100,]
+entradas.df=entradas.df[entradas.df$acidez<100,]
+
+entradas.df$grado=round(entradas.df$grado,1)
+entradas.df$gluconico=round(entradas.df$gluconico,2)
+entradas.df$acidez=round(entradas.df$acidez,2)
+entradas.df$temperatura=round(entradas.df$temperatura,2)
+```
+
+Lo cual hace que nos quedemos finalmente con un dataset de `r nrow(entradas.df)` filas con unas distribuciones de informacion por fecha y por los distintos parámetros de la uva
+
+### Estadísticos básicos
+
+```{r estadisticos}
+summary(entradas.df)
+```
+
+
+## Visualizaciones de información por fecha, calidad y parámetros
+
+### Por fecha
+
+```{r grafico distribucion por fechas, echo=FALSE}
+fechas.table=table(entradas.df$fecha)
+fechas.df=as.data.frame(fechas.table)
+
+#x = reorder(miRNA, -value)
+plot = ggplot(data=fechas.df, aes(x=Var1, y=Freq))+
+  geom_bar(stat="identity", fill="steelblue", col="black", width = 1)+
+  labs(x = "Fecha") + labs(y = "Num. entradas")+
+  ggtitle(paste("Entradas por fecha ",periodo))+
+  theme(axis.text.x = element_text(size = 8.5,
+                                   angle = 45,
+                                   color = "black",hjust = 1))+
+  theme(plot.title = element_text(hjust = 0.5))
+plot
+
+```
+
+### Por calidad
+
+```{r grafico distribucion por calidad uva blanca, echo=FALSE}
+calidades.table=table(entradas.df$calidad)
+calidades.df=as.data.frame(calidades.table)
+
+#x = reorder(miRNA, -value)
+plot = ggplot(data=calidades.df, aes(x=Var1, y=Freq))+
+  geom_bar(stat="identity", fill="steelblue", col="black", width=0.5)+
+  labs(x = "Calidad") + labs(y = "Num. entradas")+
+  ggtitle(paste("Entradas por calidad ",periodo))+
+  theme(plot.title = element_text(hjust = 0.5))
+plot
+```
+
+### Distribución por grado
+
+```{r grafico distribucion por grado, echo=FALSE}
+grados.table=table(entradas.df$grado)
+grados.df=as.data.frame(grados.table)
+
+#x = reorder(miRNA, -value)
+plot = ggplot(data=grados.df, aes(x=Var1, y=Freq))+
+  geom_bar(stat="identity", fill="steelblue", col="black")+
+  labs(x = "Grado") + labs(y = "Num. entradas")+
+  ggtitle(paste("Distribución de grado ",periodo))+
+  theme(axis.text.x = element_text(size = 8.5,
+                                   angle = 45,
+                                   color = "black",hjust = 1))+
+  theme(plot.title = element_text(hjust = 0.5))
+plot
+```
+
+### Distribución por gluconico
+
+```{r grafico distribucion por gluconico, echo=FALSE}
+plot <- ggplot(entradas.df, aes(x=gluconico))+
+  geom_histogram(bins=100,fill="steelblue", colour = "black")+
+  labs(x = "Glucónico") + labs(y = "Num. entradas")+
+  ggtitle(paste("Distribución de glucónico ",periodo))+
+  theme(plot.title = element_text(hjust = 0.5))
+plot
+```
+
+### Distribución por potasio
+
+```{r grafico distribucion por potasio, echo=FALSE}
+plot <- ggplot(entradas.df, aes(x=potasio))+
+  geom_histogram(bins=100,fill="steelblue", colour = "black")+
+  labs(x = "Potasio") + labs(y = "Num. entradas")+
+  ggtitle(paste("Distribución de potasio ",periodo))+
+  theme(plot.title = element_text(hjust = 0.5))
+plot
+```
+
+### Distribución por acidez
+
+```{r grafico distribucion por acidez, echo=FALSE}
+plot <- ggplot(entradas.df, aes(x=acidez))+
+  geom_histogram(bins=100,fill="steelblue", colour = "black")+
+  labs(x = "Acidez") + labs(y = "Num. entradas")+
+  ggtitle(paste("Distribución de acidez ",periodo))+
+  theme(plot.title = element_text(hjust = 0.5))
+plot
+```
+
+# Preparación de los datos 
+
+En la fase de preparación de los datos: 
+
+ * Si no venía un valor de importe para cada entrada de uva, damos valor a esta variable necesaria en el CDM posterior a partir de un conjunto de precios de calidad de referencia
+ * Seleccionamos para el dataset resultado del proceso/informe únicamente las columnas necesarias para el CDM
+
+```{r dataset resultado, echo=FALSE}
+#si no existe la columna importe la rellenamos a partir de la información estándar
+precios_ref=c(0.0222,0.02,0.0178)
+names(precios_ref)=c("1","2","3")
+entradas.df$importe={
+  if (!("importe" %in% colnames(entradas.df)))
+    entradas.df$kilogrado*precios_ref[as.character(entradas.df$calidad)]
+}
+```
+
+## Resultado: Exportación dataset a fichero
+
+```{r dataset fichero resultado, echo=FALSE}
+entradas.df = entradas.df[,c(1,7,9,10,12:14,19)]
+head(entradas.df,2)
+fileOutput = paste("listado_valido_",periodo,"_v_informe.csv")
+write.csv2(entradas.df, fileOutput)
+```
+
+Exportamos el resultado del proceso de preparación de datos al fichero `r fileOutput` 

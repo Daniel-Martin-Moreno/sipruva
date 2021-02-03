@@ -1,0 +1,131 @@
+```{r licencia, echo=FALSE}
+#Copyright 2021 Daniel Martín-Moreno Romero
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
+```
+---
+title: "SIPRUVA: Informe de cálculo de glucónico cuando viene vacío el campo"
+author: "Daniel Martín-Moreno Romero"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(corrplot)
+library(rpart)
+library(rpart.plot)
+library(caret)
+library(dplyr)
+library(e1071)
+```
+
+## Analisis de datasets transformados de Excel a CSV
+
+```{r dataset a leer}
+file <-"ruta.csv"
+```
+
+Análisis del dataset `r file`
+
+```{r carga de resultados}
+entradas.df<-read.csv(file, encoding="latin1",header = TRUE,sep = ",",na.strings = "")
+
+names(entradas.df)
+```
+
+Esto nos carga un dataset original de `r nrow(entradas.df)` filas con un total de `r sum(entradas.df$neto)` kilogramos netos, sobre el que apicamos operaciones de limpieza de datos
+
+Preparamos los datos filtrando las filas sobre las que no podemos calcular los glucónico, esto es las que tienen alguno de los otros 4 parámetros (acidez, gluconico o grado) a nulo o los propios kilopuntos a nulo
+```{r limpieza de filas con valores nulos}
+entradas.df=entradas.df[!(is.na(entradas.df$potasio)),]
+entradas.df=entradas.df[!(is.na(entradas.df$acidez)),]
+entradas.df=entradas.df[is.na(entradas.df$gluconico),]
+entradas.df=entradas.df[!(is.na(entradas.df$kilopuntos)),]
+
+#hay una forma mas elegante de hacer esto, con una orden como la siguiente
+#drop_na <- c("rad")
+#housing.data.2 <- housing.data[  complete.cases(housing.data[,!(names(housing.data))%in% drop_na]),]
+
+
+#redondeamos los valores de los datos de entrada para que coincidan con los valores dados a los vectores para el calculo de kilopuntos
+entradas.df$grado=round(entradas.df$grado,1)
+entradas.df$gluconico=round(entradas.df$gluconico,2)
+entradas.df$acidez=round(entradas.df$acidez,2)
+entradas.df$temperatura=round(entradas.df$temperatura,2)
+
+entradas.df$tipoUva={
+  if (grepl("anyo1",file))
+    substring(entradas.df$tipoUva,6)
+  else
+    substring(entradas.df$tipoUva,10)
+}
+entradas.df=entradas.df[entradas.df$tipoUva=="UVA BLANCA AIREN",]
+```
+
+calculamos el gluconico
+```{r calculo gluconico}
+gluconicoDesdeFila <- function(fila){
+ 
+  puntosGrado=0
+  puntosAcidez=0
+  puntosGluconico=0
+  puntosPotasio=0
+  
+  if (fila[1]<9)
+    puntosGrado=0
+  else if (fila[1]>13)
+    puntosGrado=50
+  else
+    puntosGrado = 50-((50/41)*(13-fila[1])*10)
+  
+  if (fila[2]<3.31 | fila[2]>8.19)
+    puntosAcidez=0
+  else if (fila[2]<6.51 & fila[2]>4.99)
+    puntosAcidez=10
+  else if (fila[2]>=3.31 & fila[2]<=4.99)
+    puntosAcidez=(fila[2] - 3.30)*100*10/169
+  else
+    puntosAcidez=(8.2 - fila[2])*100*10/169
+  
+  if (fila[3]<=2000)
+    puntosPotasio=10
+  else if (fila[3]>=3000)
+    puntosPotasio=0
+  else
+    puntosPotasio=10 - (fila[3]-2000)*10/1000
+  
+  puntosGluconico= fila[4] -(puntosGrado+puntosAcidez+puntosGluconico+puntosPotasio)
+  
+  2.01 - (puntosGluconico*201/(100*30))
+}
+
+entradasUvaBASoloParametros.df=entradas.df[,c(10,12,13,18)]
+
+gluconicoDesdeDF <- function(df) {	apply(df, MARGIN=1, FUN=gluconicoDesdeFila)}
+entradas.df$gluconico=gluconicoDesdeDF(entradasUvaBASoloParametros.df)
+
+#evitamos el formato exponencial 
+entradas.df$gluconico=round(entradas.df$gluconico, 2)
+
+```
+
+## Conclusiones 
+
+Para las entradas de uva blanca Airén, objeto de nuestro estudio, el valor de gluconico presenta los siguientes valores de un total de `r nrow(entradas.df)` sobre los que se calculó: 
+```{r estadisticos gluconico}
+summary(entradas.df$gluconico)
+```
+Por tanto concluimos que el valor a dar a glucónico siempre que venga a nulo es 0 

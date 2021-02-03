@@ -1,0 +1,102 @@
+```{r licencia, echo=FALSE}
+#Copyright 2021 Daniel Martín-Moreno Romero
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
+```
+title: "SIPRUVA: Informe de tratamiento de Ouliers"
+author: "Daniel Martín-Moreno Romero"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(corrplot)
+library(rpart)
+library(rpart.plot)
+library(caret)
+library(dplyr)
+library(e1071)
+```
+
+## Analisis de datasets transformados de Excel a CSV
+
+```{r dataset a leer}
+fileAnyo1 <-"ruta_anyo1.csv"
+fileAnyo2 <-"ruta_anyo2.csv"
+fileAnyo3 <-"ruta_anyo3.csv"
+```
+
+Carga de los datasets fusionados
+
+```{r carga de resultados}
+entradasanyo1.df<-read.csv(fileAnyo1, encoding="latin1",header = TRUE,sep = ",",na.strings = "")
+entradasanyo2.df<-read.csv(fileAnyo2, encoding="latin1",header = TRUE,sep = ",",na.strings = "")
+entradasanyo3.df<-read.csv(fileAnyo3, encoding="latin1",header = TRUE,sep = ",",na.strings = "")
+
+entradas.df=rbind(entradasanyo1.df,entradasanyo2.df)
+entradas.df=rbind(entradas.df,entradasanyo3.df)
+
+names(entradas.df)
+head(entradas.df)
+```
+
+Esto nos carga un dataset original de `r nrow(entradas.df)` filas con un total de `r sum(entradas.df$neto)` kilogramos netos, sobre el que apicamos operaciones de limpieza de datos
+
+Preparamos los datos filtrando las filas sobre las que no podemos calcular los kilopuntos y ajustando gluconico, todo a partir de las medidas correctoras ya especificadas
+```{r limpieza de filas con valores nulos}
+entradas.df=entradas.df[!(is.na(entradas.df$potasio)),]
+entradas.df=entradas.df[!(is.na(entradas.df$acidez)),]
+
+entradas.df$gluconico[is.na(entradas.df$gluconico)]=0
+
+#hay una forma mas elegante de hacer esto, con una orden como la siguiente
+
+#redondeamos los valores de los datos de entrada para que coincidan con los valores dados a los vectores para el calculo de kilopuntos
+entradas.df$grado=round(entradas.df$grado,1)
+entradas.df$gluconico=round(entradas.df$gluconico,2)
+entradas.df$acidez=round(entradas.df$acidez,2)
+entradas.df$temperatura=round(entradas.df$temperatura,2)
+
+entradas.df=entradas.df[entradas.df$tipoUva %in% c("BLANCA AIREN","UVA BLANCA AIREN"),]
+
+```
+
+Hasta ahora tenemos `r nrow(entradas.df)` filas de uva blanca. Obtenemos los estadísticos básicos de las variables candidatas del modelo
+```{r estadisticos}
+summary(entradas.df[,c(10,12:14,16)])
+```
+
+Aparentemente obtenemos unos valores fuera de lo normal en acidez y en glucónico, vamos a generar unos gráficos de boxplot 
+```{r boxplot}
+par(mfrow=c(1,2))
+boxplot(entradas.df$acidez, main="Distribución de la acidez")
+boxplot(entradas.df$gluconico, main="Distribución del glucónico")
+```
+
+## Medida correctora 
+
+Aplicamos filtrado de filas para las que tienen los valores de acidez y de glucónico fuera de lo normal, y volvemos a mostrar los boxplots
+```{r correccion}
+entradas.df=entradas.df[entradas.df$acidez<100,]
+entradas.df=entradas.df[entradas.df$gluconico<100,]
+par(mfrow=c(1,2))
+boxplot(entradas.df$acidez, main="Distribución de la acidez (*)")
+boxplot(entradas.df$gluconico, main="Distribución del glucónico (*)")
+```
+
+# Conclusiones 
+
+Para las entradas de uva blanca Airén, objeto de nuestro estudio, se han detectado dos valores anormales de acidez y uno de glucónico. Se filtrarán las entradas de uva correspondientes en el informe definitivo
