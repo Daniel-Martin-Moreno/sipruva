@@ -27,19 +27,13 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 library(ggplot2)
-library(corrplot)
-library(rpart)
-library(rpart.plot)
-library(caret)
-library(dplyr)
-library(e1071)
 ```
 
 # Analisis de dataset transformado de Excel a CSV
 
 ```{r dataset a leer}
-file <-"ruta"
-periodo <- "anyo1"
+file <-"file"
+periodo <- "periodo"
 ```
 
 Análisis del dataset `r file`
@@ -138,7 +132,6 @@ summary(entradas.df)
 fechas.table=table(entradas.df$fecha)
 fechas.df=as.data.frame(fechas.table)
 
-#x = reorder(miRNA, -value)
 plot = ggplot(data=fechas.df, aes(x=Var1, y=Freq))+
   geom_bar(stat="identity", fill="steelblue", col="black", width = 1)+
   labs(x = "Fecha") + labs(y = "Num. entradas")+
@@ -157,7 +150,6 @@ plot
 calidades.table=table(entradas.df$calidad)
 calidades.df=as.data.frame(calidades.table)
 
-#x = reorder(miRNA, -value)
 plot = ggplot(data=calidades.df, aes(x=Var1, y=Freq))+
   geom_bar(stat="identity", fill="steelblue", col="black", width=0.5)+
   labs(x = "Calidad") + labs(y = "Num. entradas")+
@@ -172,7 +164,6 @@ plot
 grados.table=table(entradas.df$grado)
 grados.df=as.data.frame(grados.table)
 
-#x = reorder(miRNA, -value)
 plot = ggplot(data=grados.df, aes(x=Var1, y=Freq))+
   geom_bar(stat="identity", fill="steelblue", col="black")+
   labs(x = "Grado") + labs(y = "Num. entradas")+
@@ -239,7 +230,7 @@ entradas.df$importe={
 ```{r dataset fichero resultado, echo=FALSE}
 entradas.df = entradas.df[,c(1,7,9,10,12:14,19)]
 head(entradas.df,2)
-fileOutput = paste("listado_valido_",periodo,"_v_informe.csv")
+fileOutput = paste("listado_valido_",periodo,"_v_informe.csv", sep="")
 write.csv2(entradas.df, fileOutput)
 ```
 

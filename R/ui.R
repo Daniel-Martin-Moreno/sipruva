@@ -14,10 +14,8 @@
 
 library(shiny)
 
-# Define UI for application that draws a histogram
 shinyUI(fluidPage(
     shinyjs::useShinyjs(),
-    tags$head(tags$script(src = "message-handler.js")),
     tags$head(
         tags$style(HTML("hr {border-top: 1px solid #000000;} h1 {text-align:center; border-style: solid;  border-color: #726f6f; #output_text_arbol_reglas {font-size:60%}; #output_text_matriz_confusion {font-size: 8px}"))
     ),
@@ -107,7 +105,7 @@ shinyUI(fluidPage(
                          p(strong("Clases de entradas por rango de la diferencia")),
                          plotOutput("output_plot_clases")
                 ),
-                tabPanel("En detalle (*)", 
+                tabPanel("En detalle", 
                          textOutput("output_valor_clas_plus"),
                          p(""),
                          p("Detalle de las reglas de clasificación:"),
@@ -160,10 +158,10 @@ shinyUI(fluidPage(
                          p("Información de cómo sería el impacto en el pago a percibir por los socios con respecto a la simulación."),
                          br(),
                          p(strong("Árbol de clasificación")),
-                         p("Aplicación del algoritmo CART de clasificación y distribución de las entradas entre las clases:"),
+                         p("Aplicación del algoritmo CART de clasificación y distribución de las entradas entre las clases."),
                          br(),
-                         p(strong("En detalle (*)")),
-                         p("Presentación de información avanzada de tipo más técnico: detalle matriz de confusión, etc.:"),
+                         p(strong("En detalle")),
+                         p("Presentación de información avanzada de tipo más técnico: detalle matriz de confusión, etc."),
                          br()
                 )
             )

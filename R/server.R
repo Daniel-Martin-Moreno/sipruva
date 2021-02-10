@@ -21,9 +21,7 @@ library(caret)
 library(dplyr)
 library(e1071)
 
-#TODO: ajustar dif y lo de numerico en el otro script R
 
-# Define server logic required to draw a histogram
 shinyServer(function(input, output, session) {
     dataset <- reactive ({ 
         file <-  input$file1
@@ -246,12 +244,10 @@ shinyServer(function(input, output, session) {
                 as.numeric(input$valor)*entradas.df$neto
         }
         
-        #ofuscacion 0.15 entradas.df$importe_fijo=0.121*entradas.df$neto
         dif_a_repartir=sum(entradas.df$importe) - sum(entradas.df$importe_sim_kp_fijo)
         
         entradas.df$importe_sim_kp_var=(entradas.df$kp_desde_min_por_neto / sum(entradas.df$kp_desde_min_por_neto)) * dif_a_repartir
-        #entradas.df=entradas.df[,c(1:15)]
-        
+
         entradas.df$importe_sim_kp=entradas.df$importe_sim_kp_fijo+entradas.df$importe_sim_kp_var
         entradas.df$importe_sim_kp_x_kg=entradas.df$importe_sim_kp/entradas.df$neto
         entradas.df$importe_sim_kp_x_kg_pts=entradas.df$importe_sim_kp_x_kg*166.386
@@ -261,8 +257,6 @@ shinyServer(function(input, output, session) {
             summary(entradas.df[cols])
         })
         output$output_valor <- renderText({paste(input$criterio," Valor: ",valor," | Pesos (Grado: ",pesoGrado,", Acidez: ",pesoAcidez,", Potasio: ",pesoPotasio,", Glucónico: ",pesoGluconico,")", sep="")})
-        
-        
         
         #vemos el valor del kp
         entradas.df$valor_kp=entradas.df$importe_sim_kp/entradas.df$neto
@@ -286,8 +280,6 @@ shinyServer(function(input, output, session) {
         #para jugar en los graficos comparativa con la misma escala en las Y
         maxYLim=max(max(tablaImportesR.df$Freq),max(tablaImportesS.df$Freq))
         
-        #continuamos: a partir del valor maximo cojo la tabla maxima, aplico un coeficiente de ajuste sobre 
-        
         #Grafico precio real
         output$output_plot_hist_importe_real <- renderPlot({
             plot <- ggplot(entradas.df, aes(x=importe_x_kg))+
@@ -310,10 +302,9 @@ shinyServer(function(input, output, session) {
             plot
         })
         
-        #intentamos meter en el estudio la fecha numerica
+        #metemos en el estudio la fecha numerica
         entradas.df$fecha_num=as.numeric(as.Date(entradas.df$fecha)-min(as.Date(entradas.df$fecha))+1)
-        
-       
+
         entradas_cor_importe_sim <- cor(entradas.df[, c(4:8,22,18)]) #metemos neto y fecha solo para ver que no guarda relaciÃ³n
         output$output_table_corr_importe_simulado <- renderTable({
             data.frame(entradas_cor_importe_sim)
@@ -342,12 +333,12 @@ shinyServer(function(input, output, session) {
         },rownames=TRUE,striped = TRUE)
         
         output$output_plot_corr_importe_real <- renderPlot({
-            #defino una paleta de colores. TODO: depurar comentarios
+            #defino una paleta de colores. 
             col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", 
                                       "#77AADD", "#4477AA"))
-            plot <-corrplot(entradas_cor_importe, method = "square", #method tambien puede ser shade, o circle, o eclipse, o pie, color es el estandar
+            plot <-corrplot(entradas_cor_importe, method = "square", 
                             tl.col = "black",
-                            tl.srt = 45, col = col(200), #expandemos col. TODO: poner valor menor
+                            tl.srt = 45, col = col(100), 
                             addCoef.col = "black",
                             order = "hclust",
                             type = "upper",
@@ -371,8 +362,7 @@ shinyServer(function(input, output, session) {
         socios.df$importeCalc=as.numeric(format(socios.df$importeCalc, scientific = FALSE))
         
         socios.df$dif=(socios.df$importeCalc-socios.df$importe)/socios.df$importe
-        
-        #summary(socios.df$dif)
+
         #Pestaña Impacto en socios
         output$output_valor_imp <- renderText({paste(input$criterio," Valor: ",valor," | Pesos (Grado: ",pesoGrado,", Acidez: ",pesoAcidez,", Potasio: ",pesoPotasio,", Glucónico: ",pesoGluconico,")", sep="")})
         
@@ -402,7 +392,7 @@ shinyServer(function(input, output, session) {
                 theme(plot.title = element_text(hjust = 0.5))
             plot
         })
-        #TODO: Poner en las etiquetas del eje de las Y marcas porcentuales
+        
         output$output_plot_impacto_importe_diferencias <- renderPlot({
             plot <- ggplot(socios.df, aes(x=dif))+
                 geom_histogram(fill="steelblue", colour = "black")+
@@ -421,8 +411,6 @@ shinyServer(function(input, output, session) {
         output$output_table_impacto_importe_diferencias_dist_2 <- renderTable(table_freq_2.df)
         
         
-        # session$sendCustomMessage(type = 'alertmessage', 
-        #                           message = 'Simulación realizada')
         shinyjs::alert("¡Simulación realizada!")
         
         ##########################################################################
@@ -431,7 +419,7 @@ shinyServer(function(input, output, session) {
         
         
         entradas.df$dif = (entradas.df$importe_sim_kp-entradas.df$importe)/entradas.df$importe
-        breakpoints=quantile(entradas.df$dif, c(.2, .4, .6, .8)) #-0.031391647 -0.014666331  0.001270599  0.017801448
+        breakpoints=quantile(entradas.df$dif, c(.2, .4, .6, .8)) 
         breakpoints=c(-Inf, breakpoints, Inf)
         categoriasAfectados=c("MAN","AN","NA","AP","MAP")
         entradas.df$clase=cut(entradas.df$dif,breaks=breakpoints,labels=categoriasAfectados)
@@ -445,18 +433,10 @@ shinyServer(function(input, output, session) {
         #https://rpubs.com/jboscomendoza/arboles_decision_clasificacion
         set.seed(1000)
         entrenamiento.ids <- createDataPartition(entradasUvaBAParaClasificacion.df$clase, p = 0.7, list = F)
-        #aleatoriamente selecciona Ã­ndices de files del array suministrado como primer argumento. En lugar de seleccionar aleatoria en todo el dataframe lo hace de forma mÃ¡s inteligente haciendo un sampling o muestreo de la siguiente forma: en caso de que sea un vector numÃ©rico la funciÃ³n aplica un proceso de selecciÃ³n aleatoria basado en grupos de percentiles, de forma que para obtener una buena muestra del grupo total hace que sea lo suficientemente unifrome. Por defecto considera 5 grupos pero esto se puede modificar con el parametroÂ groups. En el caso de suministrar un vector de factores, variables categorias, la funciÃ³n trata de randomizar las muestras de modo que cada valor del factor tenga una proporciÃ³n suficiente en el conjunto de entrenamiento.Luego estÃ¡ el parÃ¡metro de proporciÃ³n, pY luego lists = F, es un argumento que simplemente se encarga de especificar si queremos el resultado como lista o como vector
+        #aleatoriamente selecciona índices de files del array suministrado como primer argumento. De forma inteligente
         entradasUvaBAEntrentamiento.df = entradasUvaBAParaClasificacion.df[entrenamiento.ids,]
         
-        #otra forma de hacerlo segÃºn LecciÃ³n 46 curso Udemy
-        #me quedo con el 80% 
-        # training.ids = createDataParticion(data$MEDV, p=0.8, list=F)
-        # data.training = data[training.ids]
-        # data.validation = data[-training.ids]
-        #pero hacerlo a partir de la lecciÃ³n 47: como dividir el dataset en funciÃ³n a categorÃ­as
-        
-        
-        #vemos un poco por encima la naturaleza del dataset
+        #conformamos el dataset de prueba
         entradasUvaBDAPrueba.df <- setdiff(entradasUvaBAParaClasificacion.df, entradasUvaBAEntrentamiento.df)
         
         arbol_model <- rpart(formula = clase ~ ., data = entradasUvaBAEntrentamiento.df,
@@ -467,29 +447,17 @@ shinyServer(function(input, output, session) {
         prediccion <- predict(arbol_model, newdata = entradasUvaBDAPrueba.df, type = "class")
         
         entradas_prueba_clase_factor=as.factor(entradasUvaBDAPrueba.df[["clase"]])
-        #entradas_prueba_clase_factor
         
+        #calculamos la matriz de confusión
         matriz_confusion <- confusionMatrix(prediccion, entradas_prueba_clase_factor)
         
-        
-        #OLDrpart.plot(arbol_model)
-        #en curso udemy usamos prp -> para representar de forma elegante el arbol
-        #type=2 que cada no de los nodos quede etiquetado y que el split quede debajo
-        #extra=104 muestra la probabilidad de cada clase del nodo con respecto al total siempre
-        #nn = TRUE para mostrar el numero del nodo, con nÃºmeros nodos hijo del tipo 2n y 2n+1
-        #fallen.leaves = TRUE muestra los nodos finales abajo del todo del grÃ¡fico
-        #faclen = 4 para abreviar el nombre de las clases
-        #varlen = 8 para abreviar el nombre de las variables
-        #shadowcol = para aÃ±adir un color de sombra
         paletaColores <- list("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA")
-        
         
         output$output_plot_arbol <- renderPlot(prp(arbol_model, type=2, extra=104, nn = TRUE, fallen.leaves = TRUE, 
                                                    faclen=4, varlen=8, shadow.col= "gray", box.palette = paletaColores ))
         
         output$output_text_arbol_exactitud <- renderText({paste("Exactitud clasificación: ",round(as.numeric(matriz_confusion$overall[[1]])*100,2), "%" ) })
         
-        #output$output_plot_clases <- renderPlot(boxplot(entradas.df$dif ~ entradas.df$clase))
         output$output_plot_clases <- renderPlot({
             plot <- ggplot(entradas.df, aes(x=clase, y=dif, fill = as.factor(clase)))+
                 geom_boxplot() +

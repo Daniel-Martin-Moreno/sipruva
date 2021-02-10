@@ -24,18 +24,18 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(ggplot2)
-library(corrplot)
-library(rpart)
-library(rpart.plot)
-library(caret)
-library(dplyr)
-library(e1071)
 ```
 
 ## Analisis de datasets transformados de Excel a CSV
 
 ```{r dataset a leer}
-file <-"ruta.csv"
+file <-"fileConKilopuntosCalculadosAnyo3"
+
+#valores y algoritmo ofuscados y por eso los resultados no son los esperados en el marco del TFM
+pesoGrado = 45
+pesoAcidez = 15
+pesoPotasio = 15
+pesoGluconico = 25
 ```
 
 Análisis del dataset `r file`
@@ -55,23 +55,13 @@ entradas.df=entradas.df[!(is.na(entradas.df$acidez)),]
 entradas.df=entradas.df[is.na(entradas.df$gluconico),]
 entradas.df=entradas.df[!(is.na(entradas.df$kilopuntos)),]
 
-#hay una forma mas elegante de hacer esto, con una orden como la siguiente
-#drop_na <- c("rad")
-#housing.data.2 <- housing.data[  complete.cases(housing.data[,!(names(housing.data))%in% drop_na]),]
-
-
 #redondeamos los valores de los datos de entrada para que coincidan con los valores dados a los vectores para el calculo de kilopuntos
 entradas.df$grado=round(entradas.df$grado,1)
 entradas.df$gluconico=round(entradas.df$gluconico,2)
 entradas.df$acidez=round(entradas.df$acidez,2)
 entradas.df$temperatura=round(entradas.df$temperatura,2)
 
-entradas.df$tipoUva={
-  if (grepl("anyo1",file))
-    substring(entradas.df$tipoUva,6)
-  else
-    substring(entradas.df$tipoUva,10)
-}
+entradas.df$tipoUva=substring(entradas.df$tipoUva,10)
 entradas.df=entradas.df[entradas.df$tipoUva=="UVA BLANCA AIREN",]
 ```
 
@@ -80,36 +70,36 @@ calculamos el gluconico
 gluconicoDesdeFila <- function(fila){
  
   puntosGrado=0
-  puntosAcidez=0
   puntosGluconico=0
+  puntosAcidez=0  
   puntosPotasio=0
   
   if (fila[1]<9)
-    puntosGrado=0
+      puntosGrado=0
   else if (fila[1]>13)
-    puntosGrado=50
+      puntosGrado=pesoGrado
   else
-    puntosGrado = 50-((50/41)*(13-fila[1])*10)
+      puntosGrado = pesoGrado-((pesoGrado/41)*(13-fila[1])*10)
   
-  if (fila[2]<3.31 | fila[2]>8.19)
-    puntosAcidez=0
-  else if (fila[2]<6.51 & fila[2]>4.99)
-    puntosAcidez=10
-  else if (fila[2]>=3.31 & fila[2]<=4.99)
-    puntosAcidez=(fila[2] - 3.30)*100*10/169
+  if (fila[2]<3.01 | fila[2]>8.49)
+      puntosAcidez=0
+  else if (fila[2]<7.01 & fila[2]>4.49)
+      puntosAcidez=pesoAcidez
+  else if (fila[2]>=3.01 & fila[2]<=4.49)
+      puntosAcidez=(fila[2] - 3)*100*pesoAcidez/149
   else
-    puntosAcidez=(8.2 - fila[2])*100*10/169
+      puntosAcidez=(8.5 - fila[2])*100*pesoAcidez/149
   
-  if (fila[3]<=2000)
-    puntosPotasio=10
+  if (fila[3]<=1500)
+      puntosPotasio=pesoPotasio
   else if (fila[3]>=3000)
-    puntosPotasio=0
+      puntosPotasio=0
   else
-    puntosPotasio=10 - (fila[3]-2000)*10/1000
+      puntosPotasio=pesoPotasio - (fila[3]-1500)*pesoPotasio/1500
   
   puntosGluconico= fila[4] -(puntosGrado+puntosAcidez+puntosGluconico+puntosPotasio)
   
-  2.01 - (puntosGluconico*201/(100*30))
+  2.51 - (puntosGluconico*251/(100*pesoGluconico))
 }
 
 entradasUvaBASoloParametros.df=entradas.df[,c(10,12,13,18)]
@@ -117,7 +107,6 @@ entradasUvaBASoloParametros.df=entradas.df[,c(10,12,13,18)]
 gluconicoDesdeDF <- function(df) {	apply(df, MARGIN=1, FUN=gluconicoDesdeFila)}
 entradas.df$gluconico=gluconicoDesdeDF(entradasUvaBASoloParametros.df)
 
-#evitamos el formato exponencial 
 entradas.df$gluconico=round(entradas.df$gluconico, 2)
 
 ```

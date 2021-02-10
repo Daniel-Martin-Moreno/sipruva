@@ -23,21 +23,15 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-library(ggplot2)
-library(corrplot)
-library(rpart)
-library(rpart.plot)
-library(caret)
-library(dplyr)
-library(e1071)
 ```
 
 ## Analisis de datasets transformados de Excel a CSV
 
 ```{r dataset a leer}
-file <-"ruta"
+file <-"fileConKilopuntosCalculadosAnyo3"
 periodo <- "anyo3"
 
+#valores y algoritmo ofuscados y por eso los resultados no son los esperados en el marco del TFM
 pesoGrado = 45
 pesoAcidez = 15
 pesoPotasio = 15
@@ -74,9 +68,6 @@ entradas.df$tipoUva={
 }
 entradas.df=entradas.df[entradas.df$tipoUva=="UVA BLANCA AIREN",]
 
-#hay una forma mas elegante de hacer esto, con una orden como la siguiente
-#drop_na <- c("rad")
-#housing.data.2 <- housing.data[  complete.cases(housing.data[,!(names(housing.data))%in% drop_na]),]
 ```
 
 ```{r redondeo valores y filtrado de tipo de uva, echo=FALSE}
@@ -103,7 +94,7 @@ kilopuntosDesdeFila <- function(fila){
       puntosGrado=pesoGrado
   else
       puntosGrado = pesoGrado-((pesoGrado/41)*(13-fila[1])*10)
-
+  
   if (fila[2]<3.01 | fila[2]>8.49)
       puntosAcidez=0
   else if (fila[2]<7.01 & fila[2]>4.49)
@@ -112,14 +103,14 @@ kilopuntosDesdeFila <- function(fila){
       puntosAcidez=(fila[2] - 3)*100*pesoAcidez/149
   else
       puntosAcidez=(8.5 - fila[2])*100*pesoAcidez/149
-
+  
   if (fila[3]<=1500)
       puntosPotasio=pesoPotasio
   else if (fila[3]>=3000)
       puntosPotasio=0
   else
       puntosPotasio=pesoPotasio - (fila[3]-1500)*pesoPotasio/1500
-
+  
   if (fila[4]<=0)
       puntosGluconico=pesoGluconico
   else if (fila[4]>2.5)
