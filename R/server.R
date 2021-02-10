@@ -305,7 +305,7 @@ shinyServer(function(input, output, session) {
         #metemos en el estudio la fecha numerica
         entradas.df$fecha_num=as.numeric(as.Date(entradas.df$fecha)-min(as.Date(entradas.df$fecha))+1)
 
-        entradas_cor_importe_sim <- cor(entradas.df[, c(4:8,22,18)]) #metemos neto y fecha solo para ver que no guarda relaciÃ³n
+        entradas_cor_importe_sim <- cor(entradas.df[, c(4:8,22,18)]) #metemos neto y fecha solo para ver que no guarda relación
         output$output_table_corr_importe_simulado <- renderTable({
             data.frame(entradas_cor_importe_sim)
         },rownames=TRUE,striped = TRUE)
@@ -314,9 +314,9 @@ shinyServer(function(input, output, session) {
             #defino una paleta de colores. TODO: depurar comentarios
             col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", 
                                       "#77AADD", "#4477AA"))
-            plot <-corrplot(entradas_cor_importe_sim, method = "square", #method tambien puede ser shade, o circle, o eclipse, o pie, color es el estandar
+            plot <-corrplot(entradas_cor_importe_sim, method = "square", 
                      tl.col = "black",
-                     tl.srt = 45, col = col(200), #expandemos col. TODO: poner valor menor
+                     tl.srt = 45, col = col(100), 
                      addCoef.col = "black", 
                      order = "hclust", 
                      type = "upper",
